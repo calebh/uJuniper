@@ -226,7 +226,7 @@ Inductive value : tm -> Prop :=
 Reserved Notation "t '-->' t'" (at level 40).
 
 Inductive step : tm -> tm -> Prop :=
-  (* pure STLC *)
+  (* Pure STLC *)
   | ST_AppAbs : forall x T2 t1 v2,
          value v2 ->
          <{(\x:T2, t1) v2}> --> <{ [x:=v2]t1 }>
@@ -237,7 +237,8 @@ Inductive step : tm -> tm -> Prop :=
          value v1 ->
          t2 --> t2' ->
          <{v1 t2}> --> <{v1  t2'}>
-  (* booleans  *)
+  
+  (* Booleans  *)
   | ST_IfTrue : forall t1 t2,
       <{if true then t1 else t2}> --> t1
   | ST_IfFalse : forall t1 t2,
@@ -245,8 +246,8 @@ Inductive step : tm -> tm -> Prop :=
   | ST_If : forall t1 t1' t2 t3,
       t1 --> t1' ->
       <{if t1 then t2 else t3}> --> <{if t1' then t2 else t3}>
-  (* pairs *)
-
+  
+  (* Pairs *)
   | ST_Pair1 : forall t1 t1' t2,
         t1 --> t1' ->
         <{ <t1,t2> }> --> <{ <t1' , t2> }>
@@ -268,6 +269,8 @@ Inductive step : tm -> tm -> Prop :=
         value v1 ->
         value v2 ->
         <{ snd <v1,v2> }> --> v2
+
+  (* Arrays *)
   | ST_ArrayLit1 : forall ty x x' xs,
         x --> x' ->
         (tm_array_lit ty (cons x xs)) --> (tm_array_lit ty (cons x' xs))
@@ -323,6 +326,35 @@ Inductive step : tm -> tm -> Prop :=
         value f ->
         value (tm_array_lit arrty arrlst) ->
         <{ f $ <<(tm_array_lit arrty arrlst)>> }> --> tm_array_lit arrty (mapi (fun i x => <{f (n <<i>>) <<x>>}>) arrlst)
+  
+  (* Nats *)
+  | ST_Nat_Eq1 : forall lhs lhs' rhs,
+        lhs --> lhs' ->
+        <{ lhs == rhs }> --> <{ lhs' == rhs }>
+  | ST_Nat_Eq2 : forall lhs rhs rhs',
+        value lhs ->
+        rhs --> rhs' ->
+        <{ lhs == rhs }> --> <{ lhs == rhs' }>
+  | ST_Nat_Eq3 : forall a b,
+        <{ n a == n b }> --> (if Nat.eqb a b then <{true}> else <{false}>)
+  | ST_Nat_Leq1 : forall lhs lhs' rhs,
+        lhs --> lhs' ->
+        <{ lhs < rhs }> --> <{ lhs' < rhs }>
+  | ST_Nat_Leq2 : forall lhs rhs rhs',
+        value lhs ->
+        rhs --> rhs' ->
+        <{ lhs < rhs }> --> <{ lhs < rhs' }>
+  | ST_Nat_Leq3 : forall a b,
+        <{ n a < n b }> --> (if Nat.ltb a b then <{true}> else <{false}>)
+  
+  (* Let expressions *)
+  | ST_Let_In1 : forall varname bound bound' body,
+        bound --> bound' ->
+        <{ let varname = bound in body }> --> <{ let varname = bound' in body}>
+  | ST_Let_In2 : forall varname bound body,
+        value bound ->
+        <{ let varname = bound in body }> --> <{ [varname:=bound] body }>
+  
 
   where "t '-->' t'" := (step t t').
 
