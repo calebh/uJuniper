@@ -4,52 +4,32 @@ From PLF Require Import Maps.
 Require Import Coq.Lists.List.
 Require Import ListExtensions.
 
-  (* In BNF Notation, the syntax for the types of this language is:
-     T := T -> T | bool | T * T
+Inductive ty : Type :=
+| Ty_Arrow : ty -> ty -> ty
+| Ty_Bool  : ty
+| Ty_Prod : ty -> ty -> ty
+| Ty_Array : ty -> nat -> ty
+| Ty_Nat : ty.
 
-     and the syntax for the language itself is:
-
-       t ::=
-       | x                    (variable)
-       | \x : T,t                 (abstraction)
-       | t t                  (application)
-       | true                 (constant true)
-       | false                (constant false)
-       | if t then t else t   (conditional)
-
-       | (t,t)                (pair [tm_pair])
-       | t.fst                (first projection [tm_fst])
-       | t.snd                (second projection [tm_snd])
-
-       (The only difference from the untyped version is the typing
-       annotation on lambda abstractions. *)
-
-  Inductive ty : Type :=
-  | Ty_Arrow : ty -> ty -> ty
-  | Ty_Bool  : ty
-  | Ty_Prod : ty -> ty -> ty
-  | Ty_Array : ty -> nat -> ty
-  | Ty_Nat : ty.
-
-  Inductive tm : Type :=
-  | tm_let_in   : string -> tm -> tm -> tm
-  | tm_var   : string -> tm
-  | tm_array_lit : ty -> list tm -> tm
-  | tm_array_con : nat -> ty -> tm -> tm
-  | tm_nat_lit : nat -> tm
-  | tm_array_get : tm -> tm -> tm -> tm
-  | tm_array_set : tm -> tm -> tm -> tm
-  | tm_mapi : tm -> tm -> tm
-  | tm_app   : tm -> tm -> tm
-  | tm_abs   : string -> ty -> tm -> tm
-  | tm_true  : tm
-  | tm_false  : tm
-  | tm_ite  : tm -> tm -> tm -> tm
-  | tm_fst : tm -> tm
-  | tm_snd : tm -> tm
-  | tm_pair : tm -> tm -> tm
-  | tm_nat_eq : tm -> tm -> tm
-  | tm_lt : tm -> tm -> tm.
+Inductive tm : Type :=
+| tm_let_in   : string -> tm -> tm -> tm
+| tm_var   : string -> tm
+| tm_array_lit : ty -> list tm -> tm
+| tm_array_con : nat -> ty -> tm -> tm
+| tm_nat_lit : nat -> tm
+| tm_array_get : tm -> tm -> tm -> tm
+| tm_array_set : tm -> tm -> tm -> tm
+| tm_mapi : tm -> tm -> tm
+| tm_app   : tm -> tm -> tm
+| tm_abs   : string -> ty -> tm -> tm
+| tm_true  : tm
+| tm_false  : tm
+| tm_ite  : tm -> tm -> tm -> tm
+| tm_fst : tm -> tm
+| tm_snd : tm -> tm
+| tm_pair : tm -> tm -> tm
+| tm_nat_eq : tm -> tm -> tm
+| tm_lt : tm -> tm -> tm.
 
 Declare Custom Entry stlc.
 Declare Custom Entry stlc_ty.
@@ -138,13 +118,10 @@ Definition swap : tm := <{\x : Bool * Bool, <snd x, fst x> }>.
    and bitwise negation of a pair of booleans (i.e. a 2-bit vector).  *)
 
 Definition andB : tm := <{\x : Bool, \y : Bool, if x then y else false}>.
-Definition and2B : tm := <{\x : Bool * Bool, \y : Bool * Bool, <andB (fst x) (fst y), andB (snd x) (snd y)>}>.
-
 Definition orB : tm := <{\x : Bool, \y : Bool, if x then true else y}>.
-Definition or2B : tm := <{\x : Bool * Bool, \y : Bool * Bool, <orB (fst x) (fst y), orB (snd x) (snd y)>}>.
-
-Definition not2B : tm := <{\x : Bool,  <notB (fst x), notB (snd x)>}>.
-
+Definition ltEq : tm := <{\x : Nat, \y : Nat, <<orB>> (x == y) (x < y)}>.
+Definition gt : tm := <{\x : Nat, \y : Nat, <<notB>> (<<ltEq>> x y) }>.
+Definition gtEq : tm := <{\x : Nat, \y : Nat, <<notB>> (x < y)}>.
 
 (* ================================================================= *)
 (** ** Substitution *)
@@ -358,10 +335,101 @@ Inductive step : tm -> tm -> Prop :=
 
   where "t '-->' t'" := (step t t').
 
-
 #[global] Hint Constructors step : core.
 
 Notation multistep := (multi step).
 Notation "t1 '-->*' t2" := (multistep t1 t2) (at level 40).
 
 Definition context := partial_map ty.
+
+Reserved Notation "Gamma '|-' t '\in' T" (at level 40, t custom stlc, T custom stlc_ty at level 0).
+
+Inductive has_type : context -> tm -> ty -> Prop :=
+  | T_Var :
+    forall Gamma x T1,
+    Gamma x = Some T1 ->
+    Gamma |- x \in T1
+  | T_Abs :
+    forall Gamma x t1 T1 T2,
+    (x |-> T2; Gamma) |- t1 \in T1 ->
+    Gamma |- <{\x:T2, t1}> \in (T2 -> T1)
+  | T_App :
+    forall Gamma t1 t2 T1 T2 T3,
+    Gamma |- t1 \in (T2 -> T1) ->
+    Gamma |- t2 \in T3 ->
+    T2 = T3 ->
+    Gamma |- <{t1 t2}> \in T1
+  | T_True :
+    forall Gamma,
+    Gamma |- <{true}> \in Bool
+  | T_False :
+    forall Gamma,
+    Gamma |- <{false}> \in Bool
+  | T_If :
+    forall Gamma t1 t2 t3 T1 T2,
+    Gamma |- t1 \in Bool ->
+    Gamma |- t2 \in T1 ->
+    Gamma |- t3 \in T2 ->
+    T1 = T2 ->
+    Gamma |- <{if t1 then t2 else t3}> \in T1
+  | T_Pair :
+    forall Gamma t1 t2 T1 T2,
+    Gamma |- t1 \in T1 ->
+    Gamma |- t2 \in T2 ->
+    Gamma |- <{<t1, t2>}> \in (T1*T2)
+  | T_Fst :
+    forall Gamma t0 T1 T2,
+    Gamma |- t0 \in (T1*T2) ->
+    Gamma |- <{fst t0}> \in T1
+  | T_Snd :
+    forall Gamma t0 T1 T2,
+    Gamma |- t0 \in (T1*T2) ->
+    Gamma |- <{snd t0}> \in T2
+  | T_Array_Lit :
+    forall Gamma lst T1,
+    Forall (fun tm => exists T2, T1 = T2 /\ has_type Gamma tm T2) lst ->
+    Gamma |- <<(tm_array_lit T1 lst)>> \in <<(Ty_Array T1 (length lst))>>
+  | T_Array_Con :
+    forall Gamma m T0 t0,
+    Gamma |- t0 \in T0 ->
+    Gamma |- <<(tm_array_con m T0 t0)>> \in <<(Ty_Array T0 m)>>
+  | T_Array_Get :
+    forall Gamma arr idx dflt T0 T1 m,
+    Gamma |- arr \in <<(Ty_Array T0 m)>> ->
+    Gamma |- idx \in Nat ->
+    Gamma |- dflt \in T1 ->
+    T0 = T1 ->
+    Gamma |- get arr[idx] else dflt \in T0
+  | T_Array_Set :
+    forall Gamma arr idx val T0 T1 m,
+    Gamma |- arr \in <<(Ty_Array T0 m)>> ->
+    Gamma |- idx \in Nat ->
+    Gamma |- val \in T1 ->
+    T0 = T1 ->
+    Gamma |- set arr[idx] = val \in <<(Ty_Array T0 m)>>
+  | T_Mapi :
+    forall Gamma f lst m T0 T1 T3,
+    Gamma |- f \in (Nat -> T0 -> T1) ->
+    Gamma |- lst \in <<(Ty_Array T3 m)>> ->
+    T0 = T3 ->
+    Gamma |- f $ lst \in <<(Ty_Array T1 m)>>
+  | T_Nat_Lit :
+    forall Gamma m,
+    Gamma |- n m \in Nat
+  | T_Nat_Eq :
+    forall Gamma a b,
+    Gamma |- a \in Nat ->
+    Gamma |- b \in Nat ->
+    Gamma |- a == b \in Bool
+  | T_Nat_Lt :
+    forall Gamma a b,
+    Gamma |- a \in Nat ->
+    Gamma |- b \in Nat ->
+    Gamma |- a < b \in Bool
+  | T_Let_In :
+    forall Gamma varname bound body T0 T1,
+    Gamma |- bound \in T0 ->
+    (varname |-> T0; Gamma) |- body \in T1 ->
+    Gamma |- let varname = bound in body \in T1
+
+  where "Gamma '|-' t '\in' T" := (has_type Gamma t T).
