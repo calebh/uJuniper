@@ -12,9 +12,8 @@ Inductive ty : Type :=
 | Ty_Nat : ty.
 
 Inductive tm : Type :=
-| tm_let_in   : string -> tm -> tm -> tm
 | tm_var   : string -> tm
-| tm_array_lit : ty -> list tm -> tm
+| tm_array_lit : ty -> (list tm) -> tm
 | tm_array_con : nat -> ty -> tm -> tm
 | tm_nat_lit : nat -> tm
 | tm_array_get : tm -> tm -> tm -> tm
@@ -68,7 +67,6 @@ Notation "'get' arr '[' idx ']' 'else' tm" := (tm_array_get arr idx tm) (in cust
 Notation "lhs '==' rhs" := (tm_nat_eq lhs rhs) (in custom stlc at level 0).
 Notation "lhs '<' rhs" := (tm_lt lhs rhs) (in custom stlc at level 0).
 Notation "'n' num" := (tm_nat_lit num) (in custom stlc at level 0).
-Notation "'let' x '=' val 'in' tm" := (tm_let_in x val tm) (in custom stlc at level 0).
 
 Notation "\ x : t , y" :=
   (tm_abs x t y) (in custom stlc at level 90, x at level 99,
@@ -122,6 +120,9 @@ Definition orB : tm := <{\x : Bool, \y : Bool, if x then true else y}>.
 Definition ltEq : tm := <{\x : Nat, \y : Nat, <<orB>> (x == y) (x < y)}>.
 Definition gt : tm := <{\x : Nat, \y : Nat, <<notB>> (<<ltEq>> x y) }>.
 Definition gtEq : tm := <{\x : Nat, \y : Nat, <<notB>> (x < y)}>.
+Definition letin (x : string) (T : ty) (v : tm) (body : tm) := <{(\x : T, body) v}>.
+
+Notation "'let' x ':' T '=' val 'in' tm" := (letin x T val tm) (in custom stlc at level 0).
 
 (* ================================================================= *)
 (** ** Substitution *)
@@ -149,8 +150,6 @@ Fixpoint subst (x : string) (s : tm) (t : tm) : tm :=
   | <{snd t}> => <{snd ([x:=s] t)}>
   | <{< t1, t2> }> =>
       <{< [x:=s] t1 , [x:=s] t2>}>
-  | <{let y = v in b}> =>
-      if String.eqb x y then t else <{let y = [x:=s] v in [x:=s] b}>
   | tm_array_lit ty lst =>
       tm_array_lit ty (List.map (fun val => <{[x:=s] val}>) lst)
   | tm_array_con m ty tm =>
@@ -204,7 +203,7 @@ Inductive value : tm -> Prop :=
   | v_nat_lit : forall x,
       value <{n x}>.
 
-
+(*
 Fixpoint value_helper (t : tm) : bool :=
   match t with
   | <{\x:T2, t1}> =>
@@ -223,7 +222,7 @@ Fixpoint value_helper (t : tm) : bool :=
       false
   end.
 
-(*
+
 Inductive value : tm -> Prop :=
   | value_con : forall tm,
       value_helper tm = true ->
@@ -281,13 +280,13 @@ Inductive step : tm -> tm -> Prop :=
         <{ snd <v1,v2> }> --> v2
 
   (* Arrays *)
-  | ST_ArrayLit1 : forall ty x x' xs,
-        x --> x' ->
-        (tm_array_lit ty (cons x xs)) --> (tm_array_lit ty (cons x' xs))
   | ST_ArrayLit2 : forall ty x xs xs',
         value x ->
         (tm_array_lit ty xs) --> (tm_array_lit ty xs') ->
         (tm_array_lit ty (cons x xs)) --> (tm_array_lit ty (cons x xs'))
+  | ST_ArrayLit1 : forall ty x x' xs,
+        x --> x' ->
+        (tm_array_lit ty (cons x xs)) --> (tm_array_lit ty (cons x' xs))
   | ST_ArrayCon1 : forall m ty t0 t0',
         t0 --> t0' ->
         (tm_array_con m ty t0) --> (tm_array_con m ty t0')
@@ -358,12 +357,14 @@ Inductive step : tm -> tm -> Prop :=
         <{ n a < n b }> --> (if Nat.ltb a b then <{true}> else <{false}>)
   
   (* Let expressions *)
+  (*
   | ST_Let_In1 : forall varname bound bound' body,
         bound --> bound' ->
         <{ let varname = bound in body }> --> <{ let varname = bound' in body}>
   | ST_Let_In2 : forall varname bound body,
         value bound ->
         <{ let varname = bound in body }> --> <{ [varname:=bound] body }>
+  *)
   
 
   where "t '-->' t'" := (step t t').
@@ -419,9 +420,14 @@ Inductive has_type : context -> tm -> ty -> Prop :=
     Gamma |- t0 \in (T1*T2) ->
     Gamma |- <{snd t0}> \in T2
   | T_Array_Lit :
-    forall Gamma lst T1,
-    Forall (fun tm => exists T2, T1 = T2 /\ has_type Gamma tm T2) lst ->
-    Gamma |- <<(tm_array_lit T1 lst)>> \in <<(Ty_Array T1 (length lst))>>
+    forall Gamma T1,
+    Gamma |- <<(tm_array_lit T1 List.nil)>> \in <<Ty_Array T1 0>>
+  | T_Array_Lit_Rec :
+    forall Gamma T1 T2 x xs m,
+    Gamma |- x \in T2 ->
+    T1 = T2 ->
+    Gamma |- <<(tm_array_lit T1 xs)>> \in <<Ty_Array T1 m>> ->
+    Gamma |- <<(tm_array_lit T1 (List.cons x xs))>> \in <<Ty_Array T1 (S m)>>
   | T_Array_Con :
     forall Gamma m T0 t0,
     Gamma |- t0 \in T0 ->
@@ -459,10 +465,12 @@ Inductive has_type : context -> tm -> ty -> Prop :=
     Gamma |- a \in Nat ->
     Gamma |- b \in Nat ->
     Gamma |- a < b \in Bool
+  (*
   | T_Let_In :
     forall Gamma varname bound body T0 T1,
     Gamma |- bound \in T0 ->
     (varname |-> T0; Gamma) |- body \in T1 ->
     Gamma |- let varname = bound in body \in T1
+  *)
 
   where "Gamma '|-' t '\in' T" := (has_type Gamma t T).

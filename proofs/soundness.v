@@ -10,6 +10,7 @@ Import Coq.Logic.Decidable.
 From Coq Require Import Lia.
 Require Import Coq.Lists.List.
 Require Import Coq.Bool.Bool.
+Require Import Coq.Program.Equality.
 
 (***************************************************************************
   Type Safety
@@ -25,11 +26,16 @@ Module uJuniperSoundness.
   #[local] Hint Constructors has_type : core.
   #[local] Hint Constructors value : core.
   
+(*
   Axiom value_dec_link : forall t,
       value t <-> value_helper t = true.
   
   Axiom value_dec : forall t,
       value t \/ ~(value t).
+  
+  Axiom step_dec : forall t,
+      (exists t', t --> t') \/ ~(exists t', t --> t').
+*)
 
 (*
   Lemma value_dec : forall t,
@@ -66,6 +72,7 @@ destruct H; try solve_by_invert; eauto.
     * destruct H0 as [t2' Hstp]; eauto.
 *)
 
+(*
   Lemma not_value_dec_link : forall t,
       ~(value t) <-> value_helper t = false.
   Proof.
@@ -81,7 +88,6 @@ destruct H; try solve_by_invert; eauto.
     inversion H.
   Qed.
 
-(*
   Lemma not_value_dec_link_impl : forall t,
       ~(value t) -> value_helper t = false.
   Proof.
@@ -102,63 +108,19 @@ destruct H; try solve_by_invert; eauto.
     eexists.
     eauto.
   Qed.
-
-  Lemma progress1 : forall t T,
-      empty |- t \in T ->
-      ~(value t) ->
-      exists t', t --> t'.
+  
+(*
+  Lemma array_type_preserved : forall Gamma T a l,
+      Gamma |- (<<tm_array_lit T (List.cons a l)>>) \in (T[<<List.length (List.cons a l)>>]) ->
+      Gamma |- (<<tm_array_lit T l>>) \in (T[<<List.length l>>]).
   Proof.
     intros.
-    remember empty as Gamma.
-    generalize dependent HeqGamma.
-    induction H; intros HeqGamma; subst; eauto.
-    admit.
-    admit.
-    admit.
-    admit.
-    admit.
-    admit.
-    admit.
-    admit.
-    admit.
-    - induction H.
-      admit.
-      rewrite (not_value_dec_link (tm_array_lit T1 (x :: l))) in H0.
-      simpl in H0.
-      pose proof (Coq.Bool.Bool.bool_dec (value_helper x) true).
-      destruct H2.
-      * rewrite e in H0.
-        apply value_dec_link in e.
-        rewrite andb_true_l in H0.
-        rewrite value_dec_link in IHForall.
-        simpl in IHForall.
-        rewrite not_true_iff_false in IHForall.
-        intuition.
-        destruct H2.
-        pose proof (array_to_array T1 l x0 H2).
-        destruct H3.
-        subst.
-        eexists.
-        econstructor 14.
-        trivial.
-        eauto.
-      * rewrite not_true_iff_false in n.
-        rewrite <- not_value_dec_link in n.
-        
-        rewrite andb_false_l in H2.
-        Search (false && _ = _).
-      apply array_to_array in H3.
-      destruct x0; inversion H3.
-      subst.
-      eexists.
-      econstructor.
-      inversion H3; subst.
-      rewrite H6.
-      eexists.
-      econstructor 15.
-      Search (
-      econstructor 15.
-      Search (_ <> true <-> _ = false).
+    inversion H; subst.
+    inversion H2; subst.
+    econstructor.
+    trivial.
+  Qed.
+*)
 
   Theorem progress : forall t T,
       empty |- t \in T ->
@@ -234,89 +196,48 @@ destruct H; try solve_by_invert; eauto.
       eexists.
       econstructor.
       eauto.
-  - induction H.
-    + repeat econstructor.
-    + destruct IHForall.
-      pose proof (value_dec x).
-      destruct H2.
-      admit.
-      right.
-      admit.
-      pose proof (value_dec x).
-      right.
-      intuition.
+  - intuition.
+    + right.
       destruct H1.
-      destruct x0; inversion H1; subst.
       eexists.
+      econstructor 14.
       eauto.
-      eexists.
-      eauto.
-      eexists.
-      econstructor 15.
-      exists (tm_array_lit T1 (x :: x0)).
-      instantiate (1:=(tm_array_lit T1 (x :: x0))).
-      econstructor 15.
-      destruct IHForall.
-      destruct H.
-      subst.
-      destruct H2.
+    + right.
       destruct H0.
-      destruct H.
+      pose proof (array_to_array T2 xs x0 H).
+      destruct H0.
       subst.
-      
-      destruct x.
-
-induction H.
-    + repeat econstructor.
-    + intuition.
-      left.
+      eexists.
       econstructor.
-      admit.
-      * destruct H1.
-        
-        econstructor 14.
+      trivial.
+      eauto.
+    + right.
+      destruct H1.
       eexists.
       econstructor 14.
-      econstructor.
-
-inversion H.
-      intuition.
-      * subst.
-        destruct x.
-        admit.
-    intros.
-    
-
- inversion H.
-    + left.
-      econstructor.
-      econstructor.
-    + subst. 
-inversion H.
-      subst.
-      intuition.
-      Focus 2.
-      apply (H2 T1).
-      right.
+      eauto.
+  - intuition.
+    + right.
       eexists.
-      econstructor 14.
-
-simpl.
-    + intuition.
-      left.
-      econstructor.
-      econstructor.
-      subst.
-      * left.
-        econstructor.
-        econstructor.
- destruct H.
-      left.
-      econstructor.
-      econstructor.
-right.
+      econstructor 16.
+      trivial.
+    + right.
+      destruct H0.
       eexists.
       econstructor.
+      eauto.
+  - right.
+    destruct IHHt1; subst; eauto; destruct IHHt2; subst; eauto; destruct IHHt3; subst; eauto; destruct H; destruct H0; destruct H1; try solve_by_invert; eauto.
+  - right.
+    destruct IHHt1; subst; eauto; destruct IHHt2; subst; eauto; destruct IHHt3; subst; eauto; destruct H; destruct H0; destruct H1; try solve_by_invert; eauto.
+  - right.
+    destruct IHHt1; subst; eauto; destruct IHHt2; subst; eauto; destruct H; destruct H0; try solve_by_invert; eauto.
+  - right.
+    destruct IHHt1; subst; eauto; destruct IHHt2; subst; eauto; destruct H; destruct H0; try solve_by_invert; eauto.
+  - right.
+    destruct IHHt1; subst; eauto; destruct IHHt2; subst; eauto; destruct H; destruct H0; try solve_by_invert; eauto.
+  Unshelve.
+  trivial.
   Qed.
 
   (* ###################################################################### *)
