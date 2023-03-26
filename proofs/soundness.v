@@ -6,7 +6,10 @@ From Coq Require Export
      Arith.PeanoNat. (* For some additional lemmas about natural numbers. *)
 Import List.ListNotations.
 Import PeanoNat.Nat.
+Import Coq.Logic.Decidable.
 From Coq Require Import Lia.
+Require Import Coq.Lists.List.
+Require Import Coq.Bool.Bool.
 
 (***************************************************************************
   Type Safety
@@ -21,6 +24,141 @@ Module uJuniperSoundness.
 
   #[local] Hint Constructors has_type : core.
   #[local] Hint Constructors value : core.
+  
+  Axiom value_dec_link : forall t,
+      value t <-> value_helper t = true.
+  
+  Axiom value_dec : forall t,
+      value t \/ ~(value t).
+
+(*
+  Lemma value_dec : forall t,
+      value t \/ ~(value t).
+  Proof.
+    intros.
+    destruct t.
+  
+  Theorem progress2 : forall t T,
+      empty |- t \in T ->
+      value t \/ exists t', t --> t'.
+  Proof.
+  intros t T Ht.
+  remember empty as Gamma.
+  generalize dependent HeqGamma.
+  induction Ht; intros HeqGamma; subst; eauto.
+  - discriminate H.
+  - right.
+    eexists.
+    destruct IHHt1; subst; eauto.
+    + destruct IHHt2; subst; eauto.
+      destruct t1; inversion H; simpl in H1; try discriminate.
+      destruct H.
+      econstructor.
+      destruct Ht1.
+
+destruct IHHt1; subst; eauto.
+    + destruct IHHt2; subst; eauto.
+      * left.
+        econstructor.
+        simpl.
+
+destruct H; try solve_by_invert; eauto.
+    * destruct H0 as [t2' Hstp]; eauto.
+*)
+
+  Lemma not_value_dec_link : forall t,
+      ~(value t) <-> value_helper t = false.
+  Proof.
+    intros.
+    intuition.
+    unfold not in H.
+    rewrite value_dec_link in H.
+    destruct (value_helper t).
+    intuition.
+    reflexivity.
+    rewrite value_dec_link in H0.
+    rewrite H0 in H.
+    inversion H.
+  Qed.
+
+(*
+  Lemma not_value_dec_link_impl : forall t,
+      ~(value t) -> value_helper t = false.
+  Proof.
+    intros.
+    rewrite not_value_dec_link in H.
+    trivial.
+  Qed.
+*)
+
+  Lemma array_to_array : forall T a b,
+      tm_array_lit T a --> b ->
+      exists a', tm_array_lit T a' = b.
+  Proof.
+    intros.
+    destruct b; inversion H; subst.
+    eexists.
+    eauto.
+    eexists.
+    eauto.
+  Qed.
+
+  Lemma progress1 : forall t T,
+      empty |- t \in T ->
+      ~(value t) ->
+      exists t', t --> t'.
+  Proof.
+    intros.
+    remember empty as Gamma.
+    generalize dependent HeqGamma.
+    induction H; intros HeqGamma; subst; eauto.
+    admit.
+    admit.
+    admit.
+    admit.
+    admit.
+    admit.
+    admit.
+    admit.
+    admit.
+    - induction H.
+      admit.
+      rewrite (not_value_dec_link (tm_array_lit T1 (x :: l))) in H0.
+      simpl in H0.
+      pose proof (Coq.Bool.Bool.bool_dec (value_helper x) true).
+      destruct H2.
+      * rewrite e in H0.
+        apply value_dec_link in e.
+        rewrite andb_true_l in H0.
+        rewrite value_dec_link in IHForall.
+        simpl in IHForall.
+        rewrite not_true_iff_false in IHForall.
+        intuition.
+        destruct H2.
+        pose proof (array_to_array T1 l x0 H2).
+        destruct H3.
+        subst.
+        eexists.
+        econstructor 14.
+        trivial.
+        eauto.
+      * rewrite not_true_iff_false in n.
+        rewrite <- not_value_dec_link in n.
+        
+        rewrite andb_false_l in H2.
+        Search (false && _ = _).
+      apply array_to_array in H3.
+      destruct x0; inversion H3.
+      subst.
+      eexists.
+      econstructor.
+      inversion H3; subst.
+      rewrite H6.
+      eexists.
+      econstructor 15.
+      Search (
+      econstructor 15.
+      Search (_ <> true <-> _ = false).
 
   Theorem progress : forall t T,
       empty |- t \in T ->
@@ -96,6 +234,89 @@ Module uJuniperSoundness.
       eexists.
       econstructor.
       eauto.
+  - induction H.
+    + repeat econstructor.
+    + destruct IHForall.
+      pose proof (value_dec x).
+      destruct H2.
+      admit.
+      right.
+      admit.
+      pose proof (value_dec x).
+      right.
+      intuition.
+      destruct H1.
+      destruct x0; inversion H1; subst.
+      eexists.
+      eauto.
+      eexists.
+      eauto.
+      eexists.
+      econstructor 15.
+      exists (tm_array_lit T1 (x :: x0)).
+      instantiate (1:=(tm_array_lit T1 (x :: x0))).
+      econstructor 15.
+      destruct IHForall.
+      destruct H.
+      subst.
+      destruct H2.
+      destruct H0.
+      destruct H.
+      subst.
+      
+      destruct x.
+
+induction H.
+    + repeat econstructor.
+    + intuition.
+      left.
+      econstructor.
+      admit.
+      * destruct H1.
+        
+        econstructor 14.
+      eexists.
+      econstructor 14.
+      econstructor.
+
+inversion H.
+      intuition.
+      * subst.
+        destruct x.
+        admit.
+    intros.
+    
+
+ inversion H.
+    + left.
+      econstructor.
+      econstructor.
+    + subst. 
+inversion H.
+      subst.
+      intuition.
+      Focus 2.
+      apply (H2 T1).
+      right.
+      eexists.
+      econstructor 14.
+
+simpl.
+    + intuition.
+      left.
+      econstructor.
+      econstructor.
+      subst.
+      * left.
+        econstructor.
+        econstructor.
+ destruct H.
+      left.
+      econstructor.
+      econstructor.
+right.
+      eexists.
+      econstructor.
   Qed.
 
   (* ###################################################################### *)

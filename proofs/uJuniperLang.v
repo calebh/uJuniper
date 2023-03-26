@@ -174,6 +174,7 @@ where "'[' x ':=' s ']' t" := (subst x s t) (in custom stlc).
 (* ================================================================= *)
 (** ** Reduction *)
 
+
 Inductive value : tm -> Prop :=
   (* In pure STLC, function abstractions are values: *)
   | v_abs : forall x T2 t1,
@@ -190,12 +191,44 @@ Inductive value : tm -> Prop :=
       value <{<v1, v2>}>
   (* An array is a value if it is a literal and all
      terms within the array are values *)
-  | v_array_lit : forall ty lst,
-      Forall value lst ->
-      value (tm_array_lit ty lst)
+  (*| v_array_lit_rec : forall ty xs,
+      Forall value xs ->
+      value (tm_array_lit ty xs)*)
+  | v_arrray_lit_base : forall ty,
+      value (tm_array_lit ty List.nil)
+  | v_array_lit_rec : forall ty x xs,
+      value x ->
+      value (tm_array_lit ty xs) ->
+      value (tm_array_lit ty (List.cons x xs))
   (* A natural number is a literal *)
   | v_nat_lit : forall x,
       value <{n x}>.
+
+
+Fixpoint value_helper (t : tm) : bool :=
+  match t with
+  | <{\x:T2, t1}> =>
+      true
+  | <{true}> =>
+      true
+  | <{false}> =>
+      true
+  | <{<v1,v2>}> =>
+      (value_helper v1) && (value_helper v2)
+  | tm_array_lit ty xs =>
+      List.forallb value_helper xs
+  | <{n x}> =>
+      true
+  | _ =>
+      false
+  end.
+
+(*
+Inductive value : tm -> Prop :=
+  | value_con : forall tm,
+      value_helper tm = true ->
+      value tm.
+*)
 
 (** We'll be using the Call-By-Value semantics rules for the Lambda
     Calculus + Booleans + Pairs in this exercise. *)
