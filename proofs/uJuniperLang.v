@@ -151,7 +151,7 @@ Fixpoint subst (x : string) (s : tm) (t : tm) : tm :=
   | <{< t1, t2> }> =>
       <{< [x:=s] t1 , [x:=s] t2>}>
   | tm_array_lit ty lst =>
-      tm_array_lit ty (List.map (fun val => <{[x:=s] val}>) lst)
+      tm_array_lit ty (List.map (subst x s) lst)
   | tm_array_con m ty tm =>
       tm_array_con m ty <{[x:=s]tm}>
   | <{ n num }> =>

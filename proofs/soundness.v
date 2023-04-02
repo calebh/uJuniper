@@ -267,51 +267,106 @@ destruct H; try solve_by_invert; eauto.
                                  empty |- v \in U   ->
                                                 Gamma |- [x:=v]t \in T.
   Proof.
-  (* UNCOMMENT THE FOLLOWING LINES AFTER COMPLETING the [has_type] EXERCISE*)
-  intros Gamma x U t v T Ht Hv.
-  generalize dependent Gamma. generalize dependent T.
-  (* Proof: By induction on the term [t].  Most cases follow
-     directly from the IH, with the exception of [var]
-     and [abs]. These aren't automatic because we must
-     reason about how the variables interact. The proofs
-     of these cases are similar to the ones in STLC.
-     We refer the reader to StlcProp.v for explanations. *)
-  induction t; intros T Gamma H;
-  (* in each case, we'll want to get at the derivation of H *)
-    inversion H; clear H; subst; simpl; eauto.
-  - (* var *)
-    rename s into y. pose proof (String.string_dec x y). destruct H; subst.
-    + (* x=y *)
-      rewrite update_eq in H2.
-      injection H2 as H2; subst.
+  intros.
+  dependent induction H; simpl; eauto.
+  - rename x0 into y. pose proof (String.string_dec x y). destruct H1; subst.
+    + rewrite update_eq in H.
+      injection H as H; subst.
       apply weakening_empty.
       rewrite eqb_refl; eauto.
-    + (* x<>y *)
-      generalize n; intro; apply eqb_neq in n; rewrite n.
-      apply T_Var. rewrite update_neq in H2; auto.
-  - (* abs *)
-    rename s into y, t into S.
-    pose proof (Bool.bool_dec (eqb_string x y) (true)).
-    destruct H.
+    + generalize n; intro; apply eqb_neq in n; rewrite n.
+      apply T_Var. rewrite update_neq in H; auto.
+  - rename x0 into y.
+    pose proof (Bool.bool_dec (String.eqb x y) (true)).
+    destruct H1.
     + (* x=y *)
       rewrite e.
       apply T_Abs.
-      unfold eqb_string in e.
-      destruct (string_dec x y).
+      rewrite eqb_eq in e.
       subst.
-      rewrite update_shadow in H5. assumption.
-      discriminate.
+      rewrite update_shadow in H.
+      assumption.
     + (* x<>y *)
       apply Bool.not_true_is_false in n.
       rewrite n.
       apply T_Abs.
-      apply IHt.
+      pose proof (IHhas_type (y |-> T2; Gamma) x U).
+      apply H1.
       rewrite update_permute; auto.
-      unfold eqb_string in n.
-      destruct (string_dec x y).
-      discriminate.
-      apply not_eq_sym in n0.
-      assumption.    
+      rewrite eqb_neq in n.
+      assumption.
+      assumption.
+  Qed.    
+  
+  Lemma repeat_cons : forall (t : tm) m,
+      exists xs, (repeat t (S m)) = t::xs.
+  Proof.
+    intros.
+    eexists.
+    instantiate (1:=repeat t m).
+    simpl.
+    reflexivity.
+  Qed.
+
+  Lemma repeat_tail : forall (t : tm) x m,
+      repeat t (S m) = t :: x ->
+      repeat t m = x.
+  Proof.
+    intros.
+    simpl in H.
+    injection H as H.
+    assumption.
+  Qed.
+
+  Lemma array_con_size : forall T0 t0 m,
+      empty |- t0 \in T0 ->
+      empty |- <<tm_array_lit T0 (repeat t0 m)>> \in (T0 [m]).
+  Proof.
+    intros.
+    induction m.
+    - simpl.
+      econstructor.
+    - pose proof (repeat_cons t0 m).
+      destruct H0.
+      rewrite H0.
+      econstructor.
+      * eauto.
+      * reflexivity.
+      * pose proof (repeat_tail t0 x m H0).
+        rewrite H1 in IHm.
+        assumption.
+  Qed.
+
+  Lemma nth_preserves : forall T1 m (m0 : nat) arrlst dflt,
+      empty |- dflt \in T1 ->
+      empty |- (n m0) \in Nat ->
+      empty |- <<tm_array_lit T1 arrlst>> \in (T1 [m]) ->
+      empty |- <<nth m0 arrlst dflt>> \in T1.
+  Proof.
+    intros.
+    generalize dependent m.
+    generalize dependent arrlst.
+    induction m0.
+    - intros.
+      destruct arrlst.
+      simpl.
+      assumption.
+      inversion H1; subst.
+      simpl.
+      assumption.
+    - intros.
+      assert (empty |- (n m0) \in Nat).
+      econstructor.
+      intuition.
+      destruct arrlst.
+      simpl.
+      assumption.
+      simpl.
+      destruct m.
+      inversion H1.
+      inversion H1; subst.
+      eapply H3.
+      eauto.
   Qed.
 
   (* ###################################################################### *)
@@ -330,34 +385,37 @@ destruct H; try solve_by_invert; eauto.
      Hint: Many cases are contradictory ([T_Var], [T_Abs]).
      The most interesting cases are [T_App], [T_Fst], and [T_Snd] *)
     (* FILL IN HERE *)
-    induction HT.
+    dependent induction HT.
     - intros.
       subst.
       inversion H.
     - intros.
       inversion H.
     - intros.
-      inversion H; subst.
+      subst.
+      inversion H0; subst.
       inversion HT1; subst.
-      * apply (substitution_preserves_typing empty x T2 t0 t2 T1).
+      * apply (substitution_preserves_typing empty x T3 t0 t2 T1).
         trivial.
         trivial.
       * econstructor.
         eapply IHHT1.
         trivial.
         trivial.
-        inversion H; subst; trivial.
+        eauto.
+        reflexivity.
       * econstructor.
         eauto.
         apply IHHT2.
         trivial.
         trivial.
+        reflexivity.
     - intros.
       inversion H.
     - intros.
       inversion H.
     - intros.
-      inversion H; subst.
+      inversion H0; subst.
       * trivial.
       * trivial.
       * econstructor.
@@ -366,6 +424,8 @@ destruct H; try solve_by_invert; eauto.
         trivial.
         trivial.
         trivial.
+        eauto.
+        reflexivity.
     - intros.
       inversion H; subst.
       * econstructor.
@@ -394,6 +454,68 @@ destruct H; try solve_by_invert; eauto.
         trivial.
       * inversion HT; subst.
         trivial.
+    - intros.
+      inversion H; subst.
+    - intros.
+      pose proof (array_to_array T1 (x::xs) t').
+      intuition.
+      destruct H4.
+      subst.
+      destruct x0.
+      inversion H0.
+      inversion H0; subst.
+      * econstructor.
+        eauto.
+        reflexivity.
+        eapply H3.
+        assumption.
+      * econstructor.
+        eauto.
+        reflexivity.
+        inversion HT2; subst.
+        econstructor.
+        assumption.
+    - intros.
+      inversion H; subst.
+      * econstructor.
+        eapply IHHT.
+        reflexivity.
+        assumption.
+      * pose proof (array_con_size T0 t0 m HT).
+        assumption.
+    - intros.
+      inversion H0; subst.
+      * econstructor.
+        eapply IHHT1.
+        reflexivity.
+        assumption.
+        assumption.
+        eauto.
+        reflexivity.
+      * econstructor.
+        eauto.
+        eapply IHHT2.
+        reflexivity.
+        assumption.
+        eauto.
+        reflexivity.
+      * econstructor.
+        eauto.
+        assumption.
+        eapply IHHT3.
+        reflexivity.
+        assumption.
+        reflexivity.
+      * inversion HT1; subst.
+        simpl.
+        destruct m0.
+        assumption.
+        assumption.
+        eapply nth_preserves.
+        assumption.
+        econstructor.
+        eauto.
+    -
   Qed.
 
   Definition stuck (t:tm) : Prop :=
