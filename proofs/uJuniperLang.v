@@ -18,7 +18,7 @@ Inductive tm : Type :=
 | tm_nat_lit : nat -> tm
 | tm_array_get : tm -> tm -> tm -> tm
 | tm_array_set : tm -> tm -> tm -> tm
-| tm_mapi : tm -> tm -> tm
+| tm_mapi : tm -> tm -> ty -> tm
 | tm_app   : tm -> tm -> tm
 | tm_abs   : string -> ty -> tm -> tm
 | tm_true  : tm
@@ -40,15 +40,6 @@ Notation "( x )" := x (in custom stlc, x at level 99).
 Notation "( x )" := x (in custom stlc_ty, x at level 99).
 Notation "x" := x (in custom stlc at level 0, x constr at level 0).
 Notation "x" := x (in custom stlc_ty at level 0, x constr at level 0).
-(*
-Notation "'[' ']' 'con' m ty tm" :=
-  (tm_array_con m ty tm) (in custom stlc at level 0,
-                          ty custom stlc_ty at level 99).
-Notation "'litarr' ty lst" :=
-  (tm_array_lit ty lst) (in custom stlc at level 0,
-                            ty custom stlc_ty at level 99,
-                            lst at level 99).
-*)
 Notation "x y" := (tm_app x y) (in custom stlc at level 1, left associativity).
 Notation "'if' x 'then' y 'else' z" :=
   (tm_ite x y z) (in custom stlc at level 89,
@@ -60,7 +51,7 @@ Notation "'true'"  := tm_true (in custom stlc at level 0).
 Notation "'false'"  := tm_false (in custom stlc at level 0).
 Notation "'fst' tm"  := (tm_fst tm) (in custom stlc at level 0).
 Notation "'snd' tm"  := (tm_snd tm) (in custom stlc at level 0).
-Notation "f '$' lst" := (tm_mapi f lst) (in custom stlc at level 0).
+Notation "f '$' lst ':' ty '[' ']'" := (tm_mapi f lst ty) (in custom stlc at level 0).
 Notation "'<' tm1 ',' tm2 '>'" := (tm_pair tm1 tm2) (in custom stlc at level 0).
 Notation "'set' arr '[' idx ']' '=' val" := (tm_array_set arr idx val) (in custom stlc at level 0).
 Notation "'get' arr '[' idx ']' 'else' tm" := (tm_array_get arr idx tm) (in custom stlc at level 0).
@@ -129,11 +120,6 @@ Notation "'let' x ':' T '=' val 'in' tm" := (letin x T val tm) (in custom stlc a
 
 Reserved Notation "'[' x ':=' s ']' t" (in custom stlc at level 20, x constr).
 
-(*
-Definition eqb_string x y :=
-  if string_dec x y then true else false.
-*)
-
 Fixpoint subst (x : string) (s : tm) (t : tm) : tm :=
   match t with
   | tm_var y =>
@@ -160,8 +146,8 @@ Fixpoint subst (x : string) (s : tm) (t : tm) : tm :=
       <{ get ([x:=s] arr)[[x:=s] idx] else ([x:=s] tm) }>
   | <{ set arr [idx]= val }> =>
       <{ set ([x:=s] arr) [[x:=s] idx] = [x:=s]val }>
-  | <{ f $ lst }> =>
-      <{ ([x:=s] f) $ ([x:=s] lst) }>
+  | <{ f $ lst : ty[] }> =>
+      <{ ([x:=s] f) $ ([x:=s] lst) : ty[] }>
   | <{ lhs == rhs }> =>
       <{ ([x:=s] lhs) == ([x:=s] rhs) }>
   | <{ lhs < rhs }> =>
@@ -202,32 +188,6 @@ Inductive value : tm -> Prop :=
   (* A natural number is a literal *)
   | v_nat_lit : forall x,
       value <{n x}>.
-
-(*
-Fixpoint value_helper (t : tm) : bool :=
-  match t with
-  | <{\x:T2, t1}> =>
-      true
-  | <{true}> =>
-      true
-  | <{false}> =>
-      true
-  | <{<v1,v2>}> =>
-      (value_helper v1) && (value_helper v2)
-  | tm_array_lit ty xs =>
-      List.forallb value_helper xs
-  | <{n x}> =>
-      true
-  | _ =>
-      false
-  end.
-
-
-Inductive value : tm -> Prop :=
-  | value_con : forall tm,
-      value_helper tm = true ->
-      value tm.
-*)
 
 (** We'll be using the Call-By-Value semantics rules for the Lambda
     Calculus + Booleans + Pairs in this exercise. *)
@@ -319,22 +279,23 @@ Inductive step : tm -> tm -> Prop :=
   | ST_Array_Set3 : forall arr idx val val',
         value arr ->
         value idx ->
+        val --> val' ->
         <{set arr[idx] = val}> --> <{set arr[idx] = val'}>
   | ST_Array_Set4 : forall arrty arrlst m val,
         value (tm_array_lit arrty arrlst) ->
         value val ->
         <{set <<tm_array_lit arrty arrlst>>[n m] = val}> --> (tm_array_lit arrty (set_nth m val arrlst))
-  | ST_Mapi1 : forall f f' lst,
+  | ST_Mapi1 : forall f f' lst ty,
         f --> f' ->
-        <{ f $ lst }> --> <{ f' $ lst }>
-  | ST_Mapi2 : forall f lst lst',
+        <{ f $ lst : ty[] }> --> <{ f' $ lst : ty[] }>
+  | ST_Mapi2 : forall f lst lst' ty,
         value f ->
         lst --> lst' ->
-        <{ f $ lst }> --> <{ f $ lst' }>
-  | ST_Mapi3 : forall f arrty arrlst,
+        <{ f $ lst : ty[] }> --> <{ f $ lst' : ty[] }>
+  | ST_Mapi3 : forall f arrty arrlst arrty',
         value f ->
         value (tm_array_lit arrty arrlst) ->
-        <{ f $ <<(tm_array_lit arrty arrlst)>> }> --> tm_array_lit arrty (mapi (fun i x => <{f (n <<i>>) <<x>>}>) arrlst)
+        <{ f $ <<(tm_array_lit arrty arrlst)>> : arrty'[] }> --> tm_array_lit arrty' (mapi (fun i x => <{f (n <<i>>) <<x>>}>) arrlst)
   
   (* Nats *)
   | ST_Nat_Eq1 : forall lhs lhs' rhs,
@@ -355,17 +316,6 @@ Inductive step : tm -> tm -> Prop :=
         <{ lhs < rhs }> --> <{ lhs < rhs' }>
   | ST_Nat_Leq3 : forall a b,
         <{ n a < n b }> --> (if Nat.ltb a b then <{true}> else <{false}>)
-  
-  (* Let expressions *)
-  (*
-  | ST_Let_In1 : forall varname bound bound' body,
-        bound --> bound' ->
-        <{ let varname = bound in body }> --> <{ let varname = bound' in body}>
-  | ST_Let_In2 : forall varname bound body,
-        value bound ->
-        <{ let varname = bound in body }> --> <{ [varname:=bound] body }>
-  *)
-  
 
   where "t '-->' t'" := (step t t').
 
@@ -451,7 +401,7 @@ Inductive has_type : context -> tm -> ty -> Prop :=
     Gamma |- f \in (Nat -> T0 -> T1) ->
     Gamma |- lst \in <<(Ty_Array T3 m)>> ->
     T0 = T3 ->
-    Gamma |- f $ lst \in <<(Ty_Array T1 m)>>
+    Gamma |- f $ lst : T1[] \in <<(Ty_Array T1 m)>>
   | T_Nat_Lit :
     forall Gamma m,
     Gamma |- n m \in Nat
@@ -465,12 +415,5 @@ Inductive has_type : context -> tm -> ty -> Prop :=
     Gamma |- a \in Nat ->
     Gamma |- b \in Nat ->
     Gamma |- a < b \in Bool
-  (*
-  | T_Let_In :
-    forall Gamma varname bound body T0 T1,
-    Gamma |- bound \in T0 ->
-    (varname |-> T0; Gamma) |- body \in T1 ->
-    Gamma |- let varname = bound in body \in T1
-  *)
 
   where "Gamma '|-' t '\in' T" := (has_type Gamma t T).

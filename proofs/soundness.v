@@ -25,77 +25,6 @@ Module uJuniperSoundness.
 
   #[local] Hint Constructors has_type : core.
   #[local] Hint Constructors value : core.
-  
-(*
-  Axiom value_dec_link : forall t,
-      value t <-> value_helper t = true.
-  
-  Axiom value_dec : forall t,
-      value t \/ ~(value t).
-  
-  Axiom step_dec : forall t,
-      (exists t', t --> t') \/ ~(exists t', t --> t').
-*)
-
-(*
-  Lemma value_dec : forall t,
-      value t \/ ~(value t).
-  Proof.
-    intros.
-    destruct t.
-  
-  Theorem progress2 : forall t T,
-      empty |- t \in T ->
-      value t \/ exists t', t --> t'.
-  Proof.
-  intros t T Ht.
-  remember empty as Gamma.
-  generalize dependent HeqGamma.
-  induction Ht; intros HeqGamma; subst; eauto.
-  - discriminate H.
-  - right.
-    eexists.
-    destruct IHHt1; subst; eauto.
-    + destruct IHHt2; subst; eauto.
-      destruct t1; inversion H; simpl in H1; try discriminate.
-      destruct H.
-      econstructor.
-      destruct Ht1.
-
-destruct IHHt1; subst; eauto.
-    + destruct IHHt2; subst; eauto.
-      * left.
-        econstructor.
-        simpl.
-
-destruct H; try solve_by_invert; eauto.
-    * destruct H0 as [t2' Hstp]; eauto.
-*)
-
-(*
-  Lemma not_value_dec_link : forall t,
-      ~(value t) <-> value_helper t = false.
-  Proof.
-    intros.
-    intuition.
-    unfold not in H.
-    rewrite value_dec_link in H.
-    destruct (value_helper t).
-    intuition.
-    reflexivity.
-    rewrite value_dec_link in H0.
-    rewrite H0 in H.
-    inversion H.
-  Qed.
-
-  Lemma not_value_dec_link_impl : forall t,
-      ~(value t) -> value_helper t = false.
-  Proof.
-    intros.
-    rewrite not_value_dec_link in H.
-    trivial.
-  Qed.
-*)
 
   Lemma array_to_array : forall T a b,
       tm_array_lit T a --> b ->
@@ -108,19 +37,6 @@ destruct H; try solve_by_invert; eauto.
     eexists.
     eauto.
   Qed.
-  
-(*
-  Lemma array_type_preserved : forall Gamma T a l,
-      Gamma |- (<<tm_array_lit T (List.cons a l)>>) \in (T[<<List.length (List.cons a l)>>]) ->
-      Gamma |- (<<tm_array_lit T l>>) \in (T[<<List.length l>>]).
-  Proof.
-    intros.
-    inversion H; subst.
-    inversion H2; subst.
-    econstructor.
-    trivial.
-  Qed.
-*)
 
   Theorem progress : forall t T,
       empty |- t \in T ->
@@ -236,8 +152,6 @@ destruct H; try solve_by_invert; eauto.
     destruct IHHt1; subst; eauto; destruct IHHt2; subst; eauto; destruct H; destruct H0; try solve_by_invert; eauto.
   - right.
     destruct IHHt1; subst; eauto; destruct IHHt2; subst; eauto; destruct H; destruct H0; try solve_by_invert; eauto.
-  Unshelve.
-  trivial.
   Qed.
 
   (* ###################################################################### *)
@@ -255,7 +169,7 @@ destruct H; try solve_by_invert; eauto.
 
   Lemma weakening_empty : forall Gamma t T,
       empty |- t \in T  ->
-                     Gamma |- t \in T.
+      Gamma |- t \in T.
   Proof.
     intros Gamma t T.
     eapply weakening.
@@ -264,8 +178,8 @@ destruct H; try solve_by_invert; eauto.
 
   Lemma substitution_preserves_typing : forall Gamma x U t v T,
       (x |-> U ; Gamma) |- t \in T ->
-                                 empty |- v \in U   ->
-                                                Gamma |- [x:=v]t \in T.
+      empty |- v \in U   ->
+      Gamma |- [x:=v]t \in T.
   Proof.
   intros.
   dependent induction H; simpl; eauto.
@@ -369,11 +283,94 @@ destruct H; try solve_by_invert; eauto.
       eauto.
   Qed.
 
+  Lemma set_nth_preserves : forall m0 val T1 arrlst m,
+      empty |- val \in T1 ->
+      empty |- <<tm_array_lit T1 arrlst>> \in (T1 [m]) ->
+      empty |- <<tm_array_lit T1 (ListExtensions.set_nth m0 val arrlst)>> \in (T1 [m]).
+  Proof.
+    intros m0.
+    induction m0.
+    - intros.
+      simpl.
+      destruct arrlst.
+      assumption.
+      destruct m.
+      inversion H0.
+      econstructor.
+      eauto.
+      reflexivity.
+      inversion H0; subst.
+      assumption.
+    - intros.
+      destruct arrlst.
+      simpl.
+      assumption.
+      destruct m.
+      inversion H0.
+      inversion H0; subst.
+      econstructor.
+      eauto.
+      reflexivity.
+      eapply IHm0.
+      assumption.
+      assumption.
+  Qed.
+
+  Lemma arrty_inversion : forall arrty arrlst T1 m,
+      empty |- <<tm_array_lit arrty arrlst>> \in (T1 [m]) ->
+      arrty = T1.
+  Proof.
+    intros.
+    inversion H; subst.
+    reflexivity.
+    reflexivity.
+  Qed.
+  
+
+  Lemma mapi_preserves_general : forall arrlst r T3 T1 m f,
+      empty |- <<tm_array_lit T3 arrlst>> \in (T3 [m]) ->
+      empty |- f \in (Nat -> T3 -> T1) ->
+      empty |- <<tm_array_lit T1 (ListExtensions.mapi_helper r (fun (i : nat) (x : tm) => <{ f (n i) x }>) arrlst)>> \in (T1 [m]).
+  Proof.
+    intros arrlst.
+    induction arrlst.
+    - intros.
+      inversion H; subst.
+      simpl.
+      econstructor.
+    - intros.
+      inversion H; subst.
+      simpl.
+      econstructor.
+      econstructor.
+      econstructor.
+      eauto.
+      econstructor.
+      reflexivity.
+      eauto.
+      reflexivity.
+      reflexivity.
+      eapply IHarrlst.
+      eauto.
+      assumption.
+  Qed.
+    
+
+  Lemma mapi_preserves : forall f m arrlst T3 T1,
+      empty |- <<tm_array_lit T3 arrlst>> \in (T3 [m]) ->
+      empty |- f \in (Nat -> T3 -> T1) ->
+      empty |- <<tm_array_lit T1 (ListExtensions.mapi (fun (i : nat) (x : tm) => <{ f (n i) x }>) arrlst)>> \in (T1 [m]).
+  Proof.
+    intros.
+    eapply mapi_preserves_general.
+    eauto.
+    assumption.
+  Qed.
+
+
   (* ###################################################################### *)
   (** *** Preservation *)
 
-  (** Exercise: 2 points (preservation) *)
-  (* Complete the proof of [preservation] for the calculus: *)
   Theorem preservation : forall t t' T,
       empty |- t \in T  ->
                      t --> t'  ->
@@ -381,10 +378,6 @@ destruct H; try solve_by_invert; eauto.
   Proof.
     intros t t' T HT. generalize dependent t'.
     remember empty as Gamma.
-  (* Proof: By induction on the given typing derivation.
-     Hint: Many cases are contradictory ([T_Var], [T_Abs]).
-     The most interesting cases are [T_App], [T_Fst], and [T_Snd] *)
-    (* FILL IN HERE *)
     dependent induction HT.
     - intros.
       subst.
@@ -515,7 +508,93 @@ destruct H; try solve_by_invert; eauto.
         assumption.
         econstructor.
         eauto.
-    -
+    - intros.
+      inversion H0; subst.
+      econstructor.
+      eapply IHHT1.
+      reflexivity.
+      trivial.
+      trivial.
+      eauto.
+      reflexivity.
+      econstructor.
+      assumption.
+      eapply IHHT2.
+      reflexivity.
+      assumption.
+      eauto.
+      reflexivity.
+      econstructor.
+      assumption.
+      assumption.
+      eapply IHHT3.
+      reflexivity.
+      assumption.
+      reflexivity.
+      pose proof (arrty_inversion arrty arrlst T1 m HT1).
+      subst.
+      eapply set_nth_preserves.
+      assumption.
+      assumption.
+  - intros.
+    inversion H0; subst.
+    econstructor.
+    eapply IHHT1.
+    reflexivity.
+    assumption.
+    eauto.
+    reflexivity.
+    econstructor.
+    eauto.
+    eapply IHHT2.
+    reflexivity.
+    assumption.
+    reflexivity.
+    pose proof (arrty_inversion arrty arrlst T3 m HT2).
+    subst.
+    eapply mapi_preserves.
+    eauto.
+    assumption.
+  - intros.
+    inversion H.
+  - intros.
+    inversion H; subst.
+    econstructor.
+    eapply IHHT1.
+    reflexivity.
+    assumption.
+    assumption.
+    econstructor.
+    assumption.
+    eapply IHHT2.
+    reflexivity.
+    assumption.
+    pose proof (Bool.bool_dec (a0 =? b0) (true)).
+    destruct H0.
+    rewrite e.
+    econstructor.
+    rewrite not_true_iff_false in n.
+    rewrite n.
+    econstructor.
+  - intros.
+    inversion H; subst.
+    econstructor.
+    eapply IHHT1.
+    reflexivity.
+    assumption.
+    assumption.
+    econstructor.
+    assumption.
+    eapply IHHT2.
+    reflexivity.
+    assumption.
+    pose proof (Bool.bool_dec (a0 <? b0) (true)).
+    destruct H0.
+    rewrite e.
+    econstructor.
+    rewrite not_true_iff_false in n.
+    rewrite n.
+    econstructor.
   Qed.
 
   Definition stuck (t:tm) : Prop :=
@@ -529,7 +608,6 @@ destruct H; try solve_by_invert; eauto.
       t -->* t' ->
       ~(stuck t').
   Proof.
-    (* FILL IN HERE *)
     intros.
     generalize dependent H.
     induction H0.
