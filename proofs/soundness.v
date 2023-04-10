@@ -152,6 +152,10 @@ Module uJuniperSoundness.
     destruct IHHt1; subst; eauto; destruct IHHt2; subst; eauto; destruct H; destruct H0; try solve_by_invert; eauto.
   - right.
     destruct IHHt1; subst; eauto; destruct IHHt2; subst; eauto; destruct H; destruct H0; try solve_by_invert; eauto.
+  - right.
+    destruct IHHt1; subst; eauto; destruct IHHt2; subst; eauto; destruct H; destruct H0; try solve_by_invert; eauto.
+  - right.
+    destruct IHHt1; subst; eauto; destruct IHHt2; subst; eauto; destruct H; destruct H0; try solve_by_invert; eauto.
   Qed.
 
   (* ###################################################################### *)
@@ -210,7 +214,7 @@ Module uJuniperSoundness.
       rewrite eqb_neq in n.
       assumption.
       assumption.
-  Qed.    
+  Qed.
   
   Lemma repeat_cons : forall (t : tm) m,
       exists xs, (repeat t (S m)) = t::xs.
@@ -594,6 +598,32 @@ Module uJuniperSoundness.
     econstructor.
     rewrite not_true_iff_false in n.
     rewrite n.
+    econstructor.
+  - intros.
+    inversion H; subst.
+    econstructor.
+    eapply IHHT1.
+    reflexivity.
+    assumption.
+    assumption.
+    econstructor.
+    assumption.
+    eapply IHHT2.
+    reflexivity.
+    assumption.
+    econstructor.
+  - intros.
+    inversion H; subst.
+    econstructor.
+    eapply IHHT1.
+    reflexivity.
+    assumption.
+    assumption.
+    econstructor.
+    assumption.
+    eapply IHHT2.
+    reflexivity.
+    assumption.
     econstructor.
   Qed.
 
