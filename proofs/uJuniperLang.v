@@ -28,7 +28,9 @@ Inductive tm : Type :=
 | tm_snd : tm -> tm
 | tm_pair : tm -> tm -> tm
 | tm_nat_eq : tm -> tm -> tm
-| tm_lt : tm -> tm -> tm.
+| tm_lt : tm -> tm -> tm
+| tm_add : tm -> tm -> tm
+| tm_sub : tm -> tm -> tm.
 
 Declare Custom Entry stlc.
 Declare Custom Entry stlc_ty.
@@ -58,6 +60,8 @@ Notation "'get' arr '[' idx ']' 'else' tm" := (tm_array_get arr idx tm) (in cust
 Notation "lhs '==' rhs" := (tm_nat_eq lhs rhs) (in custom stlc at level 0).
 Notation "lhs '<' rhs" := (tm_lt lhs rhs) (in custom stlc at level 0).
 Notation "'n' num" := (tm_nat_lit num) (in custom stlc at level 0).
+Notation "lhs '+' rhs" := (tm_add lhs rhs) (in custom stlc at level 0).
+Notation "lhs '-' rhs" := (tm_sub lhs rhs) (in custom stlc at level 0).
 
 Notation "\ x : t , y" :=
   (tm_abs x t y) (in custom stlc at level 90, x at level 99,
@@ -152,6 +156,10 @@ Fixpoint subst (x : string) (s : tm) (t : tm) : tm :=
       <{ ([x:=s] lhs) == ([x:=s] rhs) }>
   | <{ lhs < rhs }> =>
       <{ ([x:=s] lhs) < ([x:=s] rhs) }>
+  | <{ lhs + rhs }> =>
+      <{ ([x:=s] lhs) + ([x:=s] rhs) }>
+  | <{ lhs - rhs }> =>
+      <{ ([x:=s] lhs) - ([x:=s] rhs) }>
   end
 
 where "'[' x ':=' s ']' t" := (subst x s t) (in custom stlc).
@@ -316,6 +324,25 @@ Inductive step : tm -> tm -> Prop :=
         <{ lhs < rhs }> --> <{ lhs < rhs' }>
   | ST_Nat_Leq3 : forall a b,
         <{ n a < n b }> --> (if Nat.ltb a b then <{true}> else <{false}>)
+  | ST_Nat_Add1 : forall lhs lhs' rhs,
+        lhs --> lhs' ->
+        <{ lhs + rhs }> --> <{ lhs' + rhs }>
+  | ST_Nat_Add2 : forall lhs rhs rhs',
+        value lhs ->
+        rhs --> rhs' ->
+        <{ lhs + rhs }> --> <{ lhs + rhs' }>
+  | ST_Nat_Add3 : forall a b,
+        <{ n a + n b }> --> <{n <<a + b>>}>
+  | ST_Nat_Sub1 : forall lhs lhs' rhs,
+        lhs --> lhs' ->
+        <{ lhs - rhs }> --> <{ lhs' - rhs }>
+  | ST_Nat_Sub2 : forall lhs rhs rhs',
+        value lhs ->
+        rhs --> rhs' ->
+        <{ lhs - rhs }> --> <{ lhs - rhs' }>
+  | ST_Nat_Sub3 : forall a b,
+        <{ n a - n b }> --> <{n <<a - b>>}>
+
 
   where "t '-->' t'" := (step t t').
 
@@ -415,5 +442,15 @@ Inductive has_type : context -> tm -> ty -> Prop :=
     Gamma |- a \in Nat ->
     Gamma |- b \in Nat ->
     Gamma |- a < b \in Bool
+  | T_Nat_Add :
+    forall Gamma a b,
+    Gamma |- a \in Nat ->
+    Gamma |- b \in Nat ->
+    Gamma |- a + b \in Nat
+  | T_Nat_Sub :
+    forall Gamma a b,
+    Gamma |- a \in Nat ->
+    Gamma |- b \in Nat ->
+    Gamma |- a - b \in Nat
 
   where "Gamma '|-' t '\in' T" := (has_type Gamma t T).
