@@ -21,9 +21,6 @@ From PLF Require Import Maps.
 From Top Require Import uJuniperLang.
 Module uJuniperExamples.
 
-  Definition junList (elem : ty) (capacity : nat) := <| Nat * (elem[capacity]) |>.
-  Definition junStr (capacity : nat) := junList <| Nat |> (capacity + 1).
-  
   Definition temp : string := "temp".
   Definition xLen : string := "xLen".
   Definition yLen : string := "yLen".
@@ -33,9 +30,12 @@ Module uJuniperExamples.
   Definition yArr : string := "yArr".
   Definition resArr : string := "resArr".
 
+  Definition junList (elem : ty) (capacity : nat) := <| Nat * (elem[capacity]) |>.
+  Definition junStr (capacity : nat) := junList <| Nat |> (capacity + 1).
+
   Definition concatStr (capX : nat) (capY : nat) :=
     <{\ x : <<junStr capX>>, \y : <<junStr capY>>,
-      let temp : <|Nat[<<capX + capY + 1>>]|> = <<tm_array_con (capX + capY + 1) <| Nat |> <{n 0}>>> in
+      let temp : <|Nat[<<capX + (capY + 1)>>]|> = <<tm_array_con (capX + capY + 1) <| Nat |> <{n 0}>>> in
       let xLen : <|Nat|> = fst x in
       let yLen : <|Nat|> = fst y in
       let xArr : <|Nat[<<capX + 1>>]|> = snd x in
@@ -72,6 +72,28 @@ Module uJuniperExamples.
     unfold junList.
     unfold letin.
     repeat econstructor.
+    rewrite update_neq.
+    rewrite update_neq.
+    rewrite update_neq.
+    rewrite update_neq.
+    rewrite update_eq.
+    f_equal.
+    f_equal.
+    lia.
+    rewrite <- (eqb_neq xLen temp).
+    simpl.
+    reflexivity.
+    rewrite <- (eqb_neq yLen temp).
+    simpl.
+    reflexivity.
+    rewrite <- (eqb_neq xArr temp).
+    simpl.
+    reflexivity.
+    rewrite <- (eqb_neq yArr temp).
+    simpl.
+    reflexivity.
+    f_equal.
+    lia.
   Qed.
 
   Theorem string_concat_example :
