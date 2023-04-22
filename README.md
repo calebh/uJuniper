@@ -10,3 +10,8 @@ The following files can be found in the proofs folder:
 * soundess.v: Contains all the lemmas and theorems related to language soundness
 * examples.v: Holds the string concatenation example
 * ListExtensions.v: Contains miscellaneous list manipulation functions used by other modules.
+
+The following files can be found in the docs folder:
+
+* uJuniperTypingRules.tex: source code for the typing rules PDF
+* uJuniperTypingRules.pdf: typing rules for uJuniper in PDF form

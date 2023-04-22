@@ -1,0 +1,126 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{amsmath}
+
+\title{$\mu$Juniper typing rules}
+\author{Caleb Helbling}
+\date{April 2023}
+
+\begin{document}
+
+\maketitle
+
+\begin{equation}
+\cfrac{\Gamma(x) = T}{\Gamma \vdash x : T}\text{TVAR}
+\end{equation}
+
+\begin{equation}
+\cfrac{x \mapsto T_2; \Gamma \vdash t_1 : T_1}{\Gamma \vdash \lambda x : T_2 . t_1 : T_2 \rightarrow T_1}\text{TABS}
+\end{equation}
+
+\begin{equation}
+\cfrac
+{\Gamma \vdash t_1 : T_2 \rightarrow T_1 \;\;\;\;\; \Gamma \vdash t_2 : T_3 \;\;\;\;\; T_2 = T_3}
+{\Gamma \vdash t_1 \; t_2 : T_1}\text{TAPP}
+\end{equation}
+
+\begin{equation}
+\cfrac{}{\Gamma \vdash \text{true} : \text{Bool}}\text{TTRUE}
+\end{equation}
+
+\begin{equation}
+\cfrac{}{\Gamma \vdash \text{false} : \text{Bool}}\text{TFALSE}
+\end{equation}
+
+\begin{equation}
+\cfrac{
+\Gamma \vdash t_1 : \text{Bool} \;\;\;\;\; \Gamma \vdash t_2 : T_2 \;\;\;\;\; \Gamma \vdash t_3 : T_3 \;\;\;\;\; T_2 = T_3
+}
+{\Gamma \vdash \textbf{if}\; t_1\; \textbf{then}\; t_2\; \textbf{else}\; t_3 : T_2}\text{TIF}
+\end{equation}
+
+\begin{equation}
+\cfrac
+{\Gamma \vdash t_1 : T_1 \;\;\;\;\; \Gamma \vdash t_2 : T_2}
+{\Gamma \vdash (t_1, t_2) : T_1 * T_2}\text{TPAIR}
+\end{equation}
+
+\begin{equation}
+\cfrac
+{\Gamma \vdash t : T_1 * T_2}
+{\Gamma \vdash \textbf{fst}\; t : T_1}\text{TFST}
+\end{equation}
+
+\begin{equation}
+\cfrac
+{\Gamma \vdash t : T_1 * T_2}
+{\Gamma \vdash \textbf{snd}\; t : T_2}\text{TSND}
+\end{equation}
+
+\begin{equation}
+\cfrac
+{}
+{\Gamma \vdash ([\;] : T[\;]) : T[0]}\text{TARR\_LIT}
+\end{equation}
+
+\begin{equation}
+\cfrac
+{\Gamma \vdash x : T_2 \;\;\;\;\; \Gamma \vdash (xs : T_1[\;]) : T_1[m] \;\;\;\;\; T_1 = T_2}
+{\Gamma \vdash (x::xs : T_1[\;]) : T_1[1+m] }\text{TARR\_LIT\_REC}
+\end{equation}
+
+\begin{equation}
+\cfrac
+{\Gamma \vdash t : T}
+{\Gamma \vdash (m * [t] : T[\;]) : T[m]}\text{TARRAY\_CON}
+\end{equation}
+
+\begin{equation}
+\cfrac
+{\Gamma \vdash a : T_0[m] \;\;\;\;\; \Gamma \vdash i : \text{Nat} \;\;\;\;\; \Gamma \vdash d : T_1 \;\;\;\;\; T_0 = T_1}
+{\Gamma \vdash \textbf{get}\; a[i]\ \textbf{else}\; d : T_0}\text{TARR\_GET}
+\end{equation}
+
+\begin{equation}
+\cfrac
+{\Gamma \vdash a : T_0[m] \;\;\;\;\; \Gamma \vdash i : \text{Nat} \;\;\;\;\; \Gamma \vdash v : T_1 \;\;\;\;\; T_0 = T_1}
+{\Gamma \vdash \textbf{set}\; a[i]=v : T_0[m]}\text{TARR\_SET}
+\end{equation}
+
+\begin{equation}
+\cfrac
+{\Gamma \vdash f : \text{Nat} \rightarrow T_0 \rightarrow T_1 \;\;\;\;\; \Gamma \vdash l : T_3[m]  \;\;\;\;\; T_0 = T_3}
+{\Gamma \vdash (f\; \$\; l : T_1[]) : T_1[m]}\text{TMAPI}
+\end{equation}
+
+\begin{equation}
+\cfrac
+{}
+{\Gamma \vdash n : \text{Nat}}\text{TNAT}
+\end{equation}
+
+\begin{equation}
+\cfrac
+{\Gamma \vdash a : \text{Nat}  \;\;\;\;\; \Gamma \vdash b : \text{Nat}}
+{\Gamma \vdash a == b : \text{Bool}}\text{TNAT\_EQ}
+\end{equation}
+
+\begin{equation}
+\cfrac
+{\Gamma \vdash a : \text{Nat}  \;\;\;\;\; \Gamma \vdash b : \text{Nat}}
+{\Gamma \vdash a < b : \text{Bool}}\text{TNAT\_LT}
+\end{equation}
+
+\begin{equation}
+\cfrac
+{\Gamma \vdash a : \text{Nat}  \;\;\;\;\; \Gamma \vdash b : \text{Nat}}
+{\Gamma \vdash a + b : \text{Nat}}\text{TNAT\_ADD}
+\end{equation}
+
+\begin{equation}
+\cfrac
+{\Gamma \vdash a : \text{Nat}  \;\;\;\;\; \Gamma \vdash b : \text{Nat}}
+{\Gamma \vdash a - b : \text{Nat}}\text{TNAT\_SUB}
+\end{equation}
+
+\end{document}
