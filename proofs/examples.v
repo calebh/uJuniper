@@ -30,11 +30,15 @@ Module uJuniperExamples.
   Definition yArr : string := "yArr".
   Definition resArr : string := "resArr".
 
+  (* Type aliases in Juniper are just Gallina functions *)
   Definition junList (elem : ty) (capacity : nat) := <| Nat * (elem[capacity]) |>.
   Definition junStr (capacity : nat) := junList <| Nat |> (capacity + 1).
-
+  
+  (* concatStr is polymoprhic over capX and capY via an ordinary Gallina function *)
   Definition concatStr (capX : nat) (capY : nat) :=
     <{\ x : <<junStr capX>>, \y : <<junStr capY>>,
+      (* Here is the cruical point where we define an array of type Nat[capX + (capY + 1)] but assign it
+         a value of Nat[capX + capY + 1] *)
       let temp : <|Nat[<<capX + (capY + 1)>>]|> = <<tm_array_con (capX + capY + 1) <| Nat |> <{n 0}>>> in
       let xLen : <|Nat|> = fst x in
       let yLen : <|Nat|> = fst y in
@@ -55,12 +59,9 @@ Module uJuniperExamples.
         >>
       >
       }>.
-  
-  Definition hello := <{<n 6, <<tm_array_lit <|Nat|> [<{n 72}>; <{n 101}>; <{n 108}>; <{n 108}>; <{n 111}>; <{n 0}>]>>>}>.
-  Definition world := <{<n 7, <<tm_array_lit <|Nat|> [<{n 32}>; <{n 119}>; <{n 111}>; <{n 114}>; <{n 108}>; <{n 100}>; <{n 0}>]>>>}>.
-  
-  Definition hello_world := <{<n 12, <<tm_array_lit <|Nat|> [<{n 72}>; <{n 101}>; <{n 108}>; <{n 108}>; <{n 111}>; <{n 32}>; <{n 119}>; <{n 111}>; <{n 114}>; <{n 108}>; <{n 100}>; <{n 0}>]>>>}>.
-  
+
+  (* Show that concatStr is well typed. Doing so requires knowledge of the associativity of additon,
+     which demonstrates the use of the lia tactic. *)
   Theorem string_concat_type :
     forall capX capY,
     empty |- <<concatStr capX capY>> \in
@@ -96,7 +97,13 @@ Module uJuniperExamples.
     lia.
   Qed.
 
-  Theorem string_concat_example :
+  (* A demonstration of concatStr by concatenating "Hello" and " world" *)  
+  Definition hello := <{<n 6, <<tm_array_lit <|Nat|> [<{n 72}>; <{n 101}>; <{n 108}>; <{n 108}>; <{n 111}>; <{n 0}>]>>>}>.
+  Definition world := <{<n 7, <<tm_array_lit <|Nat|> [<{n 32}>; <{n 119}>; <{n 111}>; <{n 114}>; <{n 108}>; <{n 100}>; <{n 0}>]>>>}>.
+  
+  Definition hello_world := <{<n 12, <<tm_array_lit <|Nat|> [<{n 72}>; <{n 101}>; <{n 108}>; <{n 108}>; <{n 111}>; <{n 32}>; <{n 119}>; <{n 111}>; <{n 114}>; <{n 108}>; <{n 100}>; <{n 0}>]>>>}>.
+
+  Example string_concat_example :
     <{<<concatStr 5 6>> <<hello>> <<world>>}> -->* hello_world.
   Proof.
     unfold concatStr.

@@ -105,11 +105,6 @@ Definition W : string := "W".
 Definition notB : tm := <{\x : Bool, if x then false else true}>.
 Definition swap : tm := <{\x : Bool * Bool, <snd x, fst x> }>.
 
-(* Question 21 [and2B, or2B, not2B] (3 points):
-
-   Write down expressions to calculate the bitwise and, bitwise or,
-   and bitwise negation of a pair of booleans (i.e. a 2-bit vector).  *)
-
 Definition andB : tm := <{\x : Bool, \y : Bool, if x then y else false}>.
 Definition orB : tm := <{\x : Bool, \y : Bool, if x then true else y}>.
 Definition ltEq : tm := <{\x : Nat, \y : Nat, <<orB>> (x == y) (x < y)}>.
@@ -184,9 +179,6 @@ Inductive value : tm -> Prop :=
       value <{<v1, v2>}>
   (* An array is a value if it is a literal and all
      terms within the array are values *)
-  (*| v_array_lit_rec : forall ty xs,
-      Forall value xs ->
-      value (tm_array_lit ty xs)*)
   | v_arrray_lit_base : forall ty,
       value (tm_array_lit ty List.nil)
   | v_array_lit_rec : forall ty x xs,
