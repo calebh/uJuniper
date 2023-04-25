@@ -76,7 +76,6 @@ Module uJuniperSoundness.
       (* Finally, If [t1 --> t1'], then [t1 t2 --> t1' t2]
          by [ST_App1]. *)
       destruct H as [t1' Hstp]; eauto.
-    (* FILL IN HERE *)
   - right.
     destruct IHHt1; subst; eauto; destruct IHHt2; subst; eauto; destruct IHHt3; subst; eauto; destruct H; destruct H0; destruct H1; try solve_by_invert; eauto.
   - intuition.
